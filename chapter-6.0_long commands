@@ -1,0 +1,52 @@
+# 6.6 Test the endpoint locally:
+Invoke-WebRequest -Uri "http://localhost:9182/metrics" -UseBasicParsing
+
+# 6.6 Run to display only the first few lines: 
+(Invoke-WebRequest -Uri "http://localhost:9182/metrics" -UseBasicParsing).Content -split "`n" | Select-Object -First 15
+
+# 6.6 Test Windows Exporter also provides a health endpoint:
+Invoke-WebRequest -Uri "http://localhost:9182/health" -UseBasicParsing
+
+# 6.7 Verify that Windows Exporter responds locally:
+Invoke-WebRequest `
+    -Uri "http://localhost:9182/metrics" `
+    -UseBasicParsing |
+    Select-Object StatusCode
+
+# 6.7 Step 3, Run the following command in PowerShell:
+Get-NetFirewallRule -PolicyStore ActiveStore |
+    Where-Object {
+        $_.Enabled -eq $true -and
+        $_.Direction -eq "Inbound"
+    } |
+    Get-NetFirewallPortFilter |
+    Where-Object {
+        $_.Protocol -eq "TCP" -and
+        $_.LocalPort -eq "9182"
+    }
+
+# 6.7 Step 4, Create a restricted inbound rule:
+New-NetFirewallRule `
+    -DisplayName "Windows Exporter - Prometheus" `
+    -Direction Inbound `
+    -Protocol TCP `
+    -LocalPort 9182 `
+    -RemoteAddress 10.10.20.8 `
+    -Action Allow `
+    -Profile Domain,Private
+
+# 6.7 Step 5, Verify the new rule, Run:
+Get-NetFirewallRule `
+    -DisplayName "Windows Exporter - Prometheus" |
+    Format-List DisplayName, Enabled, Direction, Action, Profile
+
+# 6.7 Step 5, Inspect the port filter:
+Get-NetFirewallRule `
+    -DisplayName "Windows Exporter - Prometheus" |
+    Get-NetFirewallPortFilter
+
+# 6.7 Step 5, Inspect the remote-address restriction:
+Get-NetFirewallRule `
+    -DisplayName "Windows Exporter - Prometheus" |
+    Get-NetFirewallAddressFilter
+

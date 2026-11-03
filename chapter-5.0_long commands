@@ -1,0 +1,60 @@
+# 5.8 Run query CPU utilization:
+100 * (
+  1 - avg by (hostname) (
+    rate(node_cpu_seconds_total{
+      job="linux-servers",
+      mode="idle"
+    }[5m])
+  )
+)
+
+# 5.8 Run query to calculate the percentage of memory currently available:
+100 *
+node_memory_MemAvailable_bytes{
+  job="linux-servers"
+}
+/
+node_memory_MemTotal_bytes{
+  job="linux-servers"
+}
+
+# 5.8 Run query to inspect the filesystem size reported by Node Exporter:
+node_filesystem_size_bytes{
+  job="linux-servers",
+  mountpoint="/"
+}
+
+# 5.8 Run query to calculate the percentage of space used on the root filesystem:
+100 * (
+  1 -
+  node_filesystem_avail_bytes{
+    job="linux-servers",
+    mountpoint="/"
+  }
+  /
+  node_filesystem_size_bytes{
+    job="linux-servers",
+    mountpoint="/"
+  }
+)
+
+# 5.9 Confirm that the linux-servers job is present in the loaded configuration:
+sudo docker compose exec prometheus \
+  promtool check config /etc/prometheus/prometheus.yml
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  

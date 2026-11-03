@@ -1,0 +1,11 @@
+# 9.4 Add this service under services: in docker-compose.yml:
+alertmanager:
+  image: prom/alertmanager:latest
+  container_name: alertmanager
+  restart: unless-stopped
+  ports:
+    - "10.10.20.8:9093:9093"
+  volumes:
+    - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+  command:
+    - "--config.file=/etc/alertmanager/alertmanager.yml"

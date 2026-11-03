@@ -9,3 +9,58 @@ alertmanager:
     - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
   command:
     - "--config.file=/etc/alertmanager/alertmanager.yml"
+
+# 9.4 Replace 65534 if your output shows a different value:
+sudo setfacl -m u:65534:r-- /opt/monitoring/alertmanager/alertmanager.yml
+
+# 9.4 Verify the file permissions and ACL:
+ls -l /opt/monitoring/alertmanager/alertmanager.yml
+getfacl /opt/monitoring/alertmanager/alertmanager.yml
+
+# 9.5 Update the Prometheus configuration, prometheus.yml:
+rule_files:
+  - /etc/prometheus/rules/alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+# 9.6 Step 2: Validate Prometheus configuration and alert rules:
+sudo docker compose run --rm --no-deps prometheus \
+  promtool check config /etc/prometheus/prometheus.yml
+
+# 9.6 Step 2: Validate Prometheus configuration and alert rules. Validate the rules separately:
+sudo docker compose run --rm --no-deps prometheus \
+  promtool check rules /etc/prometheus/rules/alerts.yml
+
+# 9.6 Step 3: Validate Alertmanager configuration, Run:
+sudo docker compose run --rm --no-deps \
+  --entrypoint amtool alertmanager \
+  check-config /etc/alertmanager/alertmanager.yml
+
+# 9.8 Add this rule under the existing infrastructure-alerts group’s rules: list in alerts.yml:
+      - alert: AlertingTest
+        expr: vector(1)
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Homelab alerting test"
+          description: "This is a test notification from the Homelab Club monitoring platform."
+
+# 9.9 verify the file ownership, mode, and ACL:
+ls -l /opt/monitoring/alertmanager/alertmanager.yml
+getfacl /opt/monitoring/alertmanager/alertmanager.yml
+sudo docker compose exec alertmanager id
+
+# 9.9 Grant read access to the UID reported by the container:
+sudo setfacl -m u:CONTAINER_UID:r-- /opt/monitoring/alertmanager/alertmanager.yml
+
+# 9.9 Check that the rules file exists on the host and is mounted inside the container:
+sudo ls -l /opt/monitoring/prometheus/rules/alerts.yml
+
+sudo docker compose exec prometheus \
+  ls -l /etc/prometheus/rules/
+

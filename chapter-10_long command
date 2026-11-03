@@ -1,0 +1,15 @@
+# 10.4 Step 1: Install Zabbix Agent 2, Run:
+sudo apt update
+wget
+https://repo.zabbix.com/zabbix/7.4/release/ubuntu/pool/main/z/zabbix-release/zsudo dpkg -i zabbix-release_latest_7.4+ubuntu24.04_all.deb
+sudo apt update
+sudo apt install zabbix-agent2 -y
+
+# 10.5 Step 5: Configure Windows Firewall:
+New-NetFirewallRule `
+  -DisplayName "Zabbix Agent 2 from Monitoring Server" `
+  -Direction Inbound `
+  -Protocol TCP `
+  -LocalPort 10050 `
+  -RemoteAddress 10.10.20.8 `
+  -Action Allow

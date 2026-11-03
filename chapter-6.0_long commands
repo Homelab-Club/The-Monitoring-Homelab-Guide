@@ -50,3 +50,57 @@ Get-NetFirewallRule `
     -DisplayName "Windows Exporter - Prometheus" |
     Get-NetFirewallAddressFilter
 
+# 6.9 Validating the configuration, Run:
+cd /opt/monitoring
+sudo docker compose exec prometheus \
+  promtool check config /etc/prometheus/prometheus.yml
+
+# 6.11 Viewing system information,Try:
+windows_cs_physical_memory_bytes{
+  job="windows-servers"
+}
+
+# 6.11 Inspect the available metric names directly by querying the exporter endpoint from the monitoring server:
+curl -s http://10.10.20.2:9182/metrics | grep '^windows_' | head -n 30
+
+# 6.11 Calculating CPU utilization, Run:
+100 * (
+  1 -
+  avg by (hostname) (
+    rate(windows_cpu_time_total{
+      job="windows-servers",
+      mode="idle"
+    }[5m])
+  )
+)
+
+# 6.11 Checking available memory, Run:
+windows_memory_available_bytes{
+  job="windows-servers"
+}
+
+# 6.11 Checking available memory (result in gigabytes), Run:
+windows_memory_available_bytes{
+  job="windows-servers"
+} / 1024^3
+
+# 6.11 Checking logical disk capacity. Inspect the metric:
+windows_logical_disk_size_bytes{
+  job="windows-servers"
+}
+
+# 6.12 The local metrics endpoint fails, Test:
+Invoke-WebRequest -Uri "http://localhost:9182/metrics" -UseBasicParsing
+
+# 6.12 Prometheus reports the target as DOWN. Validate the configuration again:
+sudo docker compose exec prometheus \
+  promtool check config /etc/prometheus/prometheus.yml
+
+# 7.3  verify that the Prometheus web interface responds locally:
+curl -s -o /dev/null -w "%{http_code}\n" \
+  http://localhost:9090/-/ready
+
+
+
+
+

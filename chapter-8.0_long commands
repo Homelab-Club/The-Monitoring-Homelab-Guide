@@ -1,0 +1,92 @@
+# 8.3 Confirm that Prometheus is accessible:
+curl -s -o /dev/null -w "%{http_code}\n" \
+  http://localhost:9090/-/ready
+
+# 8.4 Step 2: Grant read-only access. The equivalent shell command is:
+pveum acl modify / \
+  -user prometheus@pve \
+  -role PVEAuditor
+
+# 8.4 Step 4: Grant the token read-only access. Or use the shell:
+pveum acl modify / \
+  -token 'prometheus@pve!monitoring' \
+  -role PVEAuditor
+
+# 8.5 Step 1. Add the following configuration to pve.yml:
+  default:
+  user: prometheus@pve
+  token_name: monitoring
+  token_value: "YOUR_API_TOKEN_SECRET"
+  verify_ssl: true
+
+# 8.5 Step 2. Add the following service under services of docker-compose.yml:
+  pve-exporter:
+    image: prompve/prometheus-pve-exporter:latest
+    container_name: pve-exporter
+    restart: unless-stopped
+    environment:
+      REQUESTS_CA_BUNDLE: /etc/ssl/certs/pve-root-ca.pem
+    volumes:
+      - ./pve-exporter/pve.yml:/etc/prometheus/pve.yml:ro
+      - ./pve-exporter/pve-root-ca.pem:/etc/ssl/certs/pve-root-ca.pem:ro
+
+# 8.5 Step 4: Back up the Proxmox certificates:
+mkdir -p /root/pve-cert-backup
+chmod 700 /root/pve-cert-backup
+
+cp /etc/pve/pve-root-ca.pem /root/pve-cert-backup/
+cp /etc/pve/priv/pve-root-ca.key /root/pve-cert-backup/
+cp /etc/pve/nodes/$(hostname)/pve-ssl.pem /root/pve-cert-backup/
+cp /etc/pve/nodes/$(hostname)/pve-ssl.key /root/pve-cert-backup/
+
+# 8.5 Step 6: Regenerate the Proxmox CA certificate:
+mv /etc/pve/pve-root-ca.pem /root/pve-cert-backup/pve-root-ca.pem.old
+mv /etc/pve/priv/pve-root-ca.key /root/pve-cert-backup/pve-root-ca.key.old
+
+# 8.5 Step 7: Install the new CA certificate on HC-VM-SERVER05:
+sudo scp root@192.168.0.110:/etc/pve/pve-root-ca.pem /tmp/pve-root-ca.pem
+
+# 8.5 Step 7. Install the certificate in the exporter directory:
+sudo install -o root -g root -m 644 \
+  /tmp/pve-root-ca.pem \
+  /opt/monitoring/pve-exporter/pve-root-ca.pem
+
+# 8.5 Step 7. Verify the copied certificate:
+openssl x509 \
+  -in /opt/monitoring/pve-exporter/pve-root-ca.pem \
+  -noout -ext keyUsage
+
+# 8.5 Step 9: Add the Proxmox scrape job to Prometheus. Add the following job under the existing scrape_configs: section:
+  - job_name: proxmox
+    metrics_path: /pve
+    params:
+      module: [default]
+      cluster: ["1"]
+      node: ["1"]
+    static_configs:
+      - targets:
+          - 192.168.0.110
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: pve-exporter:9221
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  

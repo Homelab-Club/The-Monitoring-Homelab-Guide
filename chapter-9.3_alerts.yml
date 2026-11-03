@@ -1,0 +1,57 @@
+groups:
+  - name: infrastructure-alerts
+    rules:
+      - alert: MonitoringTargetDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Monitoring target is down"
+          description: "Prometheus cannot scrape {{ $labels.instance }} for job {{ $labels.job }}."
+
+      - alert: LinuxHighCPUUsage
+        expr: |
+          100 * (
+            1 - avg by (instance) (
+              rate(node_cpu_seconds_total{
+                job="linux-servers",
+                mode="idle"
+              }[5m])
+            )
+          ) > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on Linux server"
+          description: "CPU usage on {{ $labels.instance }} has exceeded 85% for 5 minutes."
+
+      - alert: LinuxLowMemory
+        expr: |
+          100 * (
+            1 - (
+              node_memory_MemAvailable_bytes{
+                job="linux-servers"
+              }
+              /
+              node_memory_MemTotal_bytes{
+                job="linux-servers"
+              }
+            )
+          ) > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low available memory on Linux server"
+          description: "Memory usage on {{ $labels.instance }} has exceeded 90% for 5 minutes."
+
+      - alert: ProxmoxHighCPUUsage
+        expr: pve_cpu_usage_ratio > 0.90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on Proxmox resource"
+          description: "CPU usage for {{ $labels.id }} has exceeded 90% for 5 minutes."

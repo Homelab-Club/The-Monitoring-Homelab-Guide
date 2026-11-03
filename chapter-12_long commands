@@ -1,0 +1,37 @@
+# A.4 Validate Prometheus configuration:
+cd /opt/monitoring
+sudo docker compose exec prometheus \
+  promtool check config /etc/prometheus/prometheus.yml
+
+# A.4 Validate alert rules:
+sudo docker compose exec prometheus \
+  promtool check rules /etc/prometheus/rules/alerts.yml
+
+# A.4 To check whether email notifications have been sent:
+sudo docker compose exec alertmanager \
+  wget -qO- http://localhost:9093/metrics \
+  | grep 'alertmanager_notifications_total{integration="email"}'
+
+# A.4 Check failed email notifications:
+sudo docker compose exec alertmanager \
+  wget -qO- http://localhost:9093/metrics \
+  | grep 'alertmanager_notifications_failed_total{integration="email"}'
+
+# A.7 Linux CPU usage:
+100 * (
+  1 - avg by (hostname) (
+    rate(node_cpu_seconds_total{
+      job="linux-servers",
+      mode="idle"
+    }[5m])
+  )
+)
+
+# A.7 Linux memory usage:
+100 * (
+  1 -
+  node_memory_MemAvailable_bytes
+  /
+  node_memory_MemTotal_bytes
+)
+  
